@@ -2,6 +2,7 @@ package com.glfx.orderprocessingservice.service;
 
 import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
+import com.glfx.orderprocessingservice.market.marketDTO.MarketData;
 import com.glfx.orderprocessingservice.model.Order;
 import com.glfx.orderprocessingservice.repository.OrderRepository;
 import com.glfx.orderprocessingservice.utils.OrderType;
@@ -26,6 +27,9 @@ public class OrderService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    MarketData marketData;
 
     public List<Order> getAllPortfolioOrders(Long portfolioID){
         //List<Order> orders =  orderRepository.findAll();
