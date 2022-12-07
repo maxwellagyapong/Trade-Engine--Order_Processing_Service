@@ -12,26 +12,24 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableScheduling
+@Configuration
 public class RedisConfig {
-    @EnableScheduling
-    @Configuration
-    public class RedisConfiguration {
 
-        @Autowired
-        private RedisConnectionFactory redisConnectionFactory;
 
-        @Value("${topic.name:order}")
-        private String topic;
+    @Autowired
+    private RedisConnectionFactory redisConnectionFactory;
 
-        @Bean
-        public ReactiveRedisOperations<String, MarketData[]> objectTemplate(LettuceConnectionFactory lettuceConnectionFactory){
-            RedisSerializer<MarketData[]> valueSerializer = new Jackson2JsonRedisSerializer<>(MarketData[].class);
-            RedisSerializationContext<String, MarketData[]> serializationContext = RedisSerializationContext.<String, MarketData[]>newSerializationContext(RedisSerializer.string())
-                    .value(valueSerializer)
-                    .build();
-            return new ReactiveRedisTemplate<String, MarketData[]>(lettuceConnectionFactory, serializationContext);
-        }
+    @Value("${topic.name:order}")
+    private String topic;
 
+    @Bean
+    public ReactiveRedisOperations<String, MarketData[]> objectTemplate(LettuceConnectionFactory lettuceConnectionFactory){
+        RedisSerializer<MarketData[]> valueSerializer = new Jackson2JsonRedisSerializer<>(MarketData[].class);
+        RedisSerializationContext<String, MarketData[]> serializationContext = RedisSerializationContext.<String, MarketData[]>newSerializationContext(RedisSerializer.string())
+                .value(valueSerializer)
+                .build();
+        return new ReactiveRedisTemplate<String, MarketData[]>(lettuceConnectionFactory, serializationContext);
     }
 
 }
