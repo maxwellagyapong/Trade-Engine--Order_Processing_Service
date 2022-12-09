@@ -168,18 +168,27 @@ public class OrderService {
 
 
     public void updateOrder(Long id, Order order) throws OrderNotFoundException {
+
         Optional<Order> orderDB = orderRepository.findById(id);
-//        boolean response = webclient.build()
-//                .put()
-//                .uri(exchange1+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/"+id)
-//                .body(Mono.just(order), Order.class)
-//                .retrieve()
-//                .bodyToMono(Boolean.class)
-//                .block();
+
         if (orderDB.isPresent()) {
-            orderDB = Optional.of(order);
+
+            orderToExchange.setQuantity(order.getQuantity());
+            orderToExchange.setPrice(order.getPrice());
+
+            boolean response = webclient.build()
+                    .put()
+                    .uri(exchange1+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/"+order.getOrderIdFromExchange())
+                    .body(Mono.just(orderToExchange), OrderToExchange.class)
+                    .retrieve()
+                    .bodyToMono(Boolean.class)
+                    .block();
+
+            orderDB.get().setQuantity(order.getQuantity());
+            orderDB.get().setPrice(order.getPrice());
             orderRepository.save(orderDB.get());
         }
+
         else{
             throw new OrderNotFoundException("Can't find Order for ID " + id);
         }
