@@ -1,4 +1,4 @@
-package com.glfx.orderprocessingservice.service;
+package com.glfx.orderprocessingservice.messaging;
 
 public class RedisPublisher {
 }

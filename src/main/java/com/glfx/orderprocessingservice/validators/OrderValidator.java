@@ -1,98 +1,186 @@
 package com.glfx.orderprocessingservice.validators;
 
-import com.glfx.orderprocessingservice.market.marketDTO.MarketData;
-import com.glfx.orderprocessingservice.market.marketRepository.MarketDataRepo;
+import com.glfx.orderprocessingservice.DTO.MarketData;
+import com.glfx.orderprocessingservice.DTO.PortfolioStock;
+import com.glfx.orderprocessingservice.DAOs.PortfolioRepository;
+import com.glfx.orderprocessingservice.DAOs.MarketDataRepo;
+import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.model.Order;
+import com.glfx.orderprocessingservice.DTO.Portfolio;
+import com.glfx.orderprocessingservice.utils.OrderType;
 import com.glfx.orderprocessingservice.utils.Side;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Component
 @Getter
 public class OrderValidator {
-        private String exchanges;
-        //Get market data from the repo
-        @Autowired
-        MarketDataRepo marketDataRepo;
+    private String exchanges;
 
+    @Autowired
+    MarketDataRepo marketDataRepo;
 
-        public boolean validate(Order order){
+    @Autowired
+    private WebClient.Builder webclient;
 
-            boolean result = false;
+    @Autowired
+    PortfolioRepository portfolioRepository;
 
-            //Find market data on specific product
-            MarketData orderMD1 = marketDataRepo.getExchange1DataRepository()
-                    .stream()
-                    .filter(md -> md.getTICKER().equalsIgnoreCase(order.getProduct().toString()))
-                    .findFirst()
-                    .get();
+    public boolean validate(Order order) throws InvalidOrderException {
+//        if(order.getQuantity() == null){
+//
+//        }
+        boolean result = false;
 
+        //Get market data on ordered product from exchange 1
+        MarketData orderMD1 = marketDataRepo.productMarketDataFromExchange1(order);
 
-            MarketData orderMD2 = marketDataRepo.getExchange2DataRepository()
-                    .stream()
-                    .filter(md -> md.getTICKER().equalsIgnoreCase(order.getProduct().toString()))
-                    .findFirst()
-                    .get();
+        //Get market data on ordered product from exchange 2
+        MarketData orderMD2 = marketDataRepo.productMarketDataFromExchange2(order);
 
-            //select the right exchange based on order validation
-            if (isValidOrder(order,orderMD1) && isValidOrder(order,orderMD2)){
-                //valid on both exchanges
-                this.exchanges = "both";
-                result = true;
-            }else if (!isValidOrder(order,orderMD1) && isValidOrder(order,orderMD2)){
-                //valid on exchange 2
-                this.exchanges = "ex2";
-                result = true;
-            }else if (isValidOrder(order,orderMD1) && !isValidOrder(order,orderMD2)){
-                //valid on exchange 1
-                this.exchanges = "ex1";
-                result = true;
-            }
-
-            //if order passes all order validation rules return true else return false
-            return result;
+        //select the right exchange based on order validation
+        if (isValidOrder(order,orderMD1) && isValidOrder(order,orderMD2)){
+            //valid on both exchanges
+            this.exchanges = "both";
+            result = true;
+        }else if (!isValidOrder(order,orderMD1) && isValidOrder(order,orderMD2)){
+            //valid on exchange 2
+            this.exchanges = "exchange2";
+            result = true;
+        }else if (isValidOrder(order,orderMD1) && !isValidOrder(order,orderMD2)){
+            //valid on exchange 1
+            this.exchanges = "exchange1";
+            result = true;
         }
 
-        private boolean isQuantityValid(Order order, MarketData md){
-            boolean isValid;
+        //if order passes all order validation rules return true else return false
+        return result;
+    }
 
-            if(order.getSide().equals(Side.Buy)){
+    private boolean isQuantityValid(Order order, MarketData md) throws InvalidOrderException{
+        boolean isValid;
+        if(order.getSide() == null){
+            throw new InvalidOrderException("Order must have a side, either BUY or SELL");
+        }
+        else{
+            if(order.getSide().equals(Side.BUY.toString())){
                 isValid = !(order.getQuantity() > md.getBUY_LIMIT());
+                if(isValid){
+                    return isValid;
+                }
+                else throw new InvalidOrderException("The quantity you want to buy is more than the current buy limit! Please reduce the quantity and try again.");
+            }
+            else if(order.getSide().equals(Side.SELL.toString())){
+                isValid = !(order.getQuantity() > md.getSELL_LIMIT());
+                if(isValid){
+                    return isValid;
+                }
+                else throw new InvalidOrderException("The quantity you want to sell is more than the current sell limit! Please reduce the quantity and try again.");
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isPriceReasonable(Order order, MarketData md) throws InvalidOrderException {
+        boolean isReasonable;
+
+        if(order.getSide().equals(Side.BUY.toString())){
+                isReasonable = !(Math.abs(md.getLAST_TRADED_PRICE() - order.getPrice()) > md.getMAX_PRICE_SHIFT());
+        }else{
+            isReasonable = !(Math.abs(order.getPrice() - md.getLAST_TRADED_PRICE() ) > md.getMAX_PRICE_SHIFT());
+        }
+
+        if(isReasonable)
+            return isReasonable;
+        else
+            if(order.getPrice() - md.getLAST_TRADED_PRICE() > 0){
+                throw new InvalidOrderException("Order price is too high!");
+            }
+            else throw new InvalidOrderException("Order price is too low!");
+
+    }
+
+    private boolean hasEnoughResources(Order order) throws InvalidOrderException {
+        boolean enoughResources;
+
+        if(order.getType().equalsIgnoreCase(OrderType.LIMIT.toString())){
+            if(order.getSide().equals(Side.BUY.toString())){
+
+                Portfolio buyerPortfolio = portfolioRepository.getClientPortfolioFromClientService(order);
+
+                enoughResources = buyerPortfolio.getAmount() >= (order.getQuantity() * order.getPrice());
+                if(enoughResources){
+                    return enoughResources;
+                }
+                else {
+                    throw new InvalidOrderException("You do not have enough balance to buy " + order.getQuantity() + " " + order.getProduct() + " stocks!");
+                }
+
             }
             else{
-                isValid = !(order.getQuantity() > md.getSELL_LIMIT());
+                PortfolioStock sellerStock = portfolioRepository.getStockFromPortfolioByTickerWhenSelling(order);
+
+                enoughResources = sellerStock.getQuantity() >= order.getQuantity();
+                if(enoughResources){
+                    return enoughResources;
+                }
+                else {
+                    throw new InvalidOrderException("You do not have enough " + order.getProduct() + " stocks to sell!");
+                }
             }
-
-            return isValid;
         }
 
-        private boolean isPriceReasonable(Order order, MarketData md){
-            boolean isReasonable;
+        else {
+            if(order.getSide().equals(Side.BUY.toString())){
 
-            if(order.getSide().equals(Side.Buy)){
-                isReasonable = !((md.getLAST_TRADED_PRICE() - order.getQuotedPrice()) > md.getMAX_PRICE_SHIFT());
-            }else{
-                isReasonable = !((order.getQuotedPrice() - md.getLAST_TRADED_PRICE() ) > md.getMAX_PRICE_SHIFT());
+                Portfolio buyerPortfolio = portfolioRepository.getClientPortfolioFromClientService(order);
+
+                enoughResources = buyerPortfolio.getAmount() >= (order.getQuantity() * marketDataRepo.productMarketDataFromExchange1(order).getASK_PRICE());
+                if(enoughResources){
+                    return enoughResources;
+                }
+                else {
+                    throw new InvalidOrderException("You do not have enough balance to buy " + order.getQuantity() + " " + order.getProduct() + " stocks!");
+                }
+
             }
+            else{
+                PortfolioStock sellerStock = portfolioRepository.getStockFromPortfolioByTickerWhenSelling(order);
 
-            return isReasonable;
-        }
-
-        private boolean hasEnoughResources(Order order){
-            boolean enoughResources;
-
-            if(order.getSide().equals(Side.Buy)){
-                enoughResources = order.getPortfolio().getFunds() > (order.getQuantity() * order.getQuotedPrice());
-            }else{
-                enoughResources = order.getPortfolio().getQuantityOwned() > order.getQuantity();
+                enoughResources = sellerStock.getQuantity() >= order.getQuantity();
+                if(enoughResources){
+                    return enoughResources;
+                }
+                else {
+                    throw new InvalidOrderException("You do not have enough " + order.getProduct() + " stocks to sell!");
+                }
             }
-
-            return enoughResources;
         }
 
-        private boolean isValidOrder(Order order, MarketData md){
-            return isPriceReasonable(order, md) && isQuantityValid(order, md) && hasEnoughResources(order);
+
+    }
+
+    private boolean isValidOrder(Order order, MarketData md) throws InvalidOrderException {
+        if(order.getType() == null){
+            throw new InvalidOrderException("Order must have a type. Either LIMIT or MARKET");
         }
+        else {
+            if (order.getType().equals(OrderType.LIMIT.toString())) {
+                if(order.getPrice() == null){
+                    throw new InvalidOrderException("You must set a price for LIMIT orders!");
+                }
+                else return isQuantityValid(order, md) && isPriceReasonable(order, md) && hasEnoughResources(order);
+
+            } else if (order.getType().equals(OrderType.MARKET.toString())) {
+
+                return isQuantityValid(order, md) && hasEnoughResources(order);
+            }
+        }
+
+        return false;
+    }
 
 }

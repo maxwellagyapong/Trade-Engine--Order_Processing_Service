@@ -1,7 +1,7 @@
 package com.glfx.orderprocessingservice.exceptions.exceptionhandlers;
 
 import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
-import com.glfx.orderprocessingservice.exceptions.NoOrdersFoundException;
+import com.glfx.orderprocessingservice.exceptions.InvalidPortfolioException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
 import com.glfx.orderprocessingservice.model.ErrorMessage;
 import org.springframework.http.HttpStatus;
@@ -23,8 +23,8 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(message);
     }
 
-    @ExceptionHandler(NoOrdersFoundException.class)
-    public ResponseEntity<ErrorMessage> noOrdersFoundException(NoOrdersFoundException exception){
+    @ExceptionHandler(InvalidPortfolioException.class)
+    public ResponseEntity<ErrorMessage> noOrdersFoundException(InvalidPortfolioException exception){
         ErrorMessage message = new ErrorMessage(HttpStatus.NOT_FOUND, exception.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(message);

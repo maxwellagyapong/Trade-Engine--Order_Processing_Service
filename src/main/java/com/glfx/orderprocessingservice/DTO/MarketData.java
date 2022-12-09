@@ -1,8 +1,9 @@
-package com.glfx.orderprocessingservice.market.marketDTO;
+package com.glfx.orderprocessingservice.DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.stereotype.Component;
 
 @Getter
 @Setter
@@ -15,7 +16,7 @@ public class MarketData {
     private double BID_PRICE;
     private double MAX_PRICE_SHIFT;
     private double ASK_PRICE;
-    private double BUY_LIMIT;
+    private int BUY_LIMIT;
 
 
     @Override

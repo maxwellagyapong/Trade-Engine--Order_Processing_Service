@@ -1,7 +1,7 @@
 package com.glfx.orderprocessingservice.exceptions;
 
-public class NoOrdersFoundException extends Exception{
-    public NoOrdersFoundException(String errorMessage){
+public class InvalidPortfolioException extends Exception{
+    public InvalidPortfolioException(String errorMessage){
         super(errorMessage);
     }
 }

@@ -1,6 +1,5 @@
-package com.glfx.orderprocessingservice.market.marketDTO;
+package com.glfx.orderprocessingservice.config;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -16,20 +15,16 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Configuration
 public class RedisConfig {
 
-
     @Autowired
     private RedisConnectionFactory redisConnectionFactory;
 
-    @Value("${topic.name:order}")
-    private String topic;
-
     @Bean
-    public ReactiveRedisOperations<String, MarketData[]> objectTemplate(LettuceConnectionFactory lettuceConnectionFactory){
-        RedisSerializer<MarketData[]> valueSerializer = new Jackson2JsonRedisSerializer<>(MarketData[].class);
-        RedisSerializationContext<String, MarketData[]> serializationContext = RedisSerializationContext.<String, MarketData[]>newSerializationContext(RedisSerializer.string())
+    public ReactiveRedisOperations<String, Object> objectTemplate(LettuceConnectionFactory lettuceConnectionFactory){
+        RedisSerializer<Object> valueSerializer = new Jackson2JsonRedisSerializer<>(Object.class);
+        RedisSerializationContext<String, Object> serializationContext = RedisSerializationContext.<String, Object>newSerializationContext(RedisSerializer.string())
                 .value(valueSerializer)
                 .build();
-        return new ReactiveRedisTemplate<String, MarketData[]>(lettuceConnectionFactory, serializationContext);
+        return new ReactiveRedisTemplate<String, Object>(lettuceConnectionFactory, serializationContext);
     }
 
 }

@@ -1,16 +1,12 @@
 package com.glfx.orderprocessingservice.model;
-
-import com.glfx.orderprocessingservice.utils.OrderType;
-import com.glfx.orderprocessingservice.utils.Product;
-import com.glfx.orderprocessingservice.utils.Side;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Date;
 
 @Entity
+@Table(name = "orders")
 @Getter
 @Setter
 @ToString
@@ -18,21 +14,43 @@ import java.util.List;
 @NoArgsConstructor
 public class Order {
     @Id
-    @Column(name = "id", nullable = false)
+    @Column(nullable = false)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    private Long portfolio;
-    private Product product;
+    @NotNull(message = "Client id cannot be null!")
+    private Long clientID;
+    @NotNull(message = "Portfolio id cannot be null!")
+    private Long portfolioID;
+    @NotNull(message = "You must select a product!")
+    private String product;
     private int quantity;
-    @Column(name = "price",length=8,precision=2)
-    private Double quotedPrice;
-    private Side side;
-    private OrderType type;
-    @CreatedDate
-    private LocalDateTime time;
-    @OneToMany(mappedBy = "order", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    private List<Execution> executions;
+    @Column(precision=2)
+    private Double price;
+    private String side;
+    @NotNull(message = "Order must have a type. Either LIMIT or MARKET!")
+    private String type;
+    @Column(name = "date_created", nullable = false)
+    private Date dateCreated;
+    @Column(name = "date_modified")
+    private Date dateModified;
     private String orderIdFromExchange;
-    private String exchange;
     private String status;
+    @Column(name="is_deleted")
+    private boolean isDeleted = false;
+
+    @PrePersist
+    protected void prePersist() {
+        if (this.dateCreated == null) dateCreated = new Date();
+        if (this.dateModified == null) dateModified = new Date();
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        this.dateModified= new Date();
+    }
+
+//    @OneToMany(mappedBy = "order", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+//    private List<Execution> executions;
+
 
 }

@@ -1,6 +1,6 @@
 package com.glfx.orderprocessingservice.config;
 
-import com.glfx.orderprocessingservice.market.marketRepository.MarketDataRepo;
+import com.glfx.orderprocessingservice.DAOs.MarketDataRepo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

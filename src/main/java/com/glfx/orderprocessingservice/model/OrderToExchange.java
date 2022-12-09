@@ -1,14 +1,16 @@
 package com.glfx.orderprocessingservice.model;
 
-import com.glfx.orderprocessingservice.utils.OrderType;
-import com.glfx.orderprocessingservice.utils.Product;
-import com.glfx.orderprocessingservice.utils.Side;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.stereotype.Component;
 
-
-public class OrderExchange {
-    private Product product;
+@Component
+@Setter
+@Getter
+public class OrderToExchange {
+    private String product;
     private int quantity;
     private Double price;
-    private Side side;
-    private OrderType type;
+    private String side;
+    private String type;
 }
