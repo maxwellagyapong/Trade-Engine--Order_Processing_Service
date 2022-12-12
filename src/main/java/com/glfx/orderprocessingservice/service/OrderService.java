@@ -3,6 +3,7 @@ package com.glfx.orderprocessingservice.service;
 import com.glfx.orderprocessingservice.exceptions.InvalidActionException;
 import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
+import com.glfx.orderprocessingservice.messaging.MessagePublisher;
 import com.glfx.orderprocessingservice.model.Order;
 import com.glfx.orderprocessingservice.DTO.OrderToExchange;
 import com.glfx.orderprocessingservice.repository.OrderRepository;
@@ -40,6 +41,9 @@ public class OrderService {
     @Autowired
     private SplitOrderService splitOrderService;
 
+    @Autowired
+    private MessagePublisher logMessage;
+
 
     public List<Order> getAllOrders(){
         return orderRepository.findAll();
@@ -65,7 +69,8 @@ public class OrderService {
                     order.setOrderIdFromExchange(response.substring(1,response.length()-1));
                     order.setStatus(Status.NOT_EXECUTED.toString());
                     order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+                    Order newOrder = orderRepository.save(order);
+                    logMessage.makeLogMessage("New Order was made with the details: " + newOrder.toString());
                 }
 
                 else if(orderValidator.getExchanges().equalsIgnoreCase("exchange2")){
@@ -79,7 +84,8 @@ public class OrderService {
                     order.setStatus(Status.NOT_EXECUTED.toString());
                     order.setOrderIdFromExchange(response.substring(1,response.length()-1));
                     order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
+                    Order newOrder = orderRepository.save(order);
+                    logMessage.makeLogMessage("New Order was made with the details: " + newOrder.toString());
                 }
 
                 else {
@@ -105,7 +111,8 @@ public class OrderService {
                         order.setStatus(Status.NOT_EXECUTED.toString());
                         order.setExchange(Exchange.exchange1.toString());
                         order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                        orderRepository.save(order);
+                        Order newOrder = orderRepository.save(order);
+                        logMessage.makeLogMessage("New Order was made with the details: " + newOrder.toString());
                     }
 
                     else if(orderValidator.getExchanges().equalsIgnoreCase("exchange2")){
@@ -119,7 +126,8 @@ public class OrderService {
                         order.setStatus(Status.NOT_EXECUTED.toString());
                         order.setExchange(Exchange.exchange2.toString());
                         order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                        orderRepository.save(order);
+                        Order newOrder = orderRepository.save(order);
+                        logMessage.makeLogMessage("New Order was made with the details: " + newOrder.toString());
                     }
 
                     else {
@@ -196,7 +204,8 @@ public class OrderService {
 
                 order.get().setQuantity(newOrder.getQuantity());
                 order.get().setPrice(newOrder.getPrice());
-                orderRepository.save(order.get());
+                Order updatedOrder = orderRepository.save(order.get());
+                logMessage.makeLogMessage("Order with ID: " + updatedOrder.getId() + " was made with the details: " + updatedOrder.toString());
             }
             else throw new InvalidActionException("Completed order cannot be modified!");
 
@@ -235,7 +244,7 @@ public class OrderService {
                     //TODO: Logic for deleting multi-leg(split) orders
                 }
 
-
+                logMessage.makeLogMessage("Order with details: " + order.toString() + " was cancelled!");
                 orderRepository.delete(order.get());
             }
             else throw new InvalidActionException("Completed order cannot be deleted!");
