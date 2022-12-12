@@ -1,12 +1,13 @@
 package com.glfx.orderprocessingservice.service;
 
+import com.glfx.orderprocessingservice.exceptions.InvalidActionException;
 import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
 import com.glfx.orderprocessingservice.model.Order;
-import com.glfx.orderprocessingservice.model.OrderToExchange;
+import com.glfx.orderprocessingservice.DTO.OrderToExchange;
 import com.glfx.orderprocessingservice.repository.OrderRepository;
+import com.glfx.orderprocessingservice.utils.Exchange;
 import com.glfx.orderprocessingservice.utils.OrderType;
-import com.glfx.orderprocessingservice.utils.Side;
 import com.glfx.orderprocessingservice.utils.Status;
 import com.glfx.orderprocessingservice.validators.OrderValidator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ public class OrderService {
     @Autowired
     private OrderToExchange orderToExchange;
 
+    @Autowired
+    private SplitOrderService splitOrderService;
+
 
     public List<Order> getAllOrders(){
         return orderRepository.findAll();
@@ -46,11 +50,9 @@ public class OrderService {
 
         if(orderValidator.validate(order)){
             if(order.getType().equalsIgnoreCase(OrderType.LIMIT.toString())){
-                orderToExchange.setProduct(order.getProduct());
-                orderToExchange.setSide(order.getSide());
-                orderToExchange.setPrice(order.getPrice());
-                orderToExchange.setType(order.getType());
-                orderToExchange.setQuantity(order.getQuantity());
+
+                orderToExchange = new OrderToExchange(order.getProduct(), order.getQuantity(), order.getPrice(),
+                        order.getSide(), order.getType());
 
                 if(orderValidator.getExchanges().equalsIgnoreCase("exchange1")){
 
@@ -62,6 +64,7 @@ public class OrderService {
                             .block();
                     order.setOrderIdFromExchange(response.substring(1,response.length()-1));
                     order.setStatus(Status.NOT_EXECUTED.toString());
+                    order.setExchange(Exchange.exchange1.toString());
                     orderRepository.save(order);
                 }
 
@@ -75,29 +78,21 @@ public class OrderService {
                             .block();
                     order.setStatus(Status.NOT_EXECUTED.toString());
                     order.setOrderIdFromExchange(response.substring(1,response.length()-1));
+                    order.setExchange(Exchange.exchange2.toString());
                     orderRepository.save(order);
                 }
 
                 else {
 
                     System.out.println("Splitting order will be done here!");
-                    String response = webclient.build().post()
-                            .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order")
-                            .body(Mono.just(orderToExchange), OrderToExchange.class)
-                            .retrieve()
-                            .bodyToMono(String.class)
-                            .block();
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    orderRepository.save(order);
+                    splitOrderService.splitOrderForLimitOrder(order);
                 }
             }
 
             else {
-                    orderToExchange.setProduct(order.getProduct());
-                    orderToExchange.setSide(order.getSide());
-                    orderToExchange.setType(order.getType());
-                    orderToExchange.setQuantity(order.getQuantity());
+
+                orderToExchange = new OrderToExchange(order.getProduct(), order.getQuantity(),
+                        order.getSide(), order.getType());
 
                     if(orderValidator.getExchanges().equalsIgnoreCase("exchange1")){
 
@@ -108,6 +103,7 @@ public class OrderService {
                                 .bodyToMono(String.class)
                                 .block();
                         order.setStatus(Status.NOT_EXECUTED.toString());
+                        order.setExchange(Exchange.exchange1.toString());
                         order.setOrderIdFromExchange(response.substring(1,response.length()-1));
                         orderRepository.save(order);
                     }
@@ -121,6 +117,7 @@ public class OrderService {
                                 .bodyToMono(String.class)
                                 .block();
                         order.setStatus(Status.NOT_EXECUTED.toString());
+                        order.setExchange(Exchange.exchange2.toString());
                         order.setOrderIdFromExchange(response.substring(1,response.length()-1));
                         orderRepository.save(order);
                     }
@@ -128,18 +125,10 @@ public class OrderService {
                     else {
 
                         System.out.println("Splitting order will be done here!");
-                        String response = webclient.build().post()
-                                .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order")
-                                .body(Mono.just(orderToExchange), OrderToExchange.class)
-                                .retrieve()
-                                .bodyToMono(String.class)
-                                .block();
-                        order.setStatus(Status.NOT_EXECUTED.toString());
-                        order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                        orderRepository.save(order);
+                        splitOrderService.splitOrderForMarketOrder(order);
+
                     }
             }
-
 
         }
 
@@ -149,16 +138,20 @@ public class OrderService {
 
     }
 
+
     public Optional<Order> checkOrderStatus(Long id) throws OrderNotFoundException{
 
         Optional<Order> order = orderRepository.findById(id);
+        //TODO: If auto-update order status is implemented, order status can be checked directly from DB without
+        // hitting exchange's endpoint.
         if (order.isPresent()) {
             OrderToExchange response = webclient.build()
                 .get()
-                .uri(exchange1+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/"+order.get().getOrderIdFromExchange())
+                .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/"+order.get().getOrderIdFromExchange())
                 .retrieve()
                 .bodyToMono(OrderToExchange.class)
                 .block();
+
             return order;
         }
         else{
@@ -167,26 +160,46 @@ public class OrderService {
     }
 
 
-    public void updateOrder(Long id, Order order) throws OrderNotFoundException {
+    public void updateOrder(Long id, Order newOrder) throws OrderNotFoundException, InvalidActionException {
 
-        Optional<Order> orderDB = orderRepository.findById(id);
+        Optional<Order> order = orderRepository.findById(id);
 
-        if (orderDB.isPresent()) {
+        if (order.isPresent()) {
 
-            orderToExchange.setQuantity(order.getQuantity());
-            orderToExchange.setPrice(order.getPrice());
+            if(!order.get().getStatus().equalsIgnoreCase(Status.COMPLETED.toString())){
+                orderToExchange.setQuantity(newOrder.getQuantity());
+                orderToExchange.setPrice(newOrder.getPrice());
 
-            boolean response = webclient.build()
-                    .put()
-                    .uri(exchange1+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/"+order.getOrderIdFromExchange())
-                    .body(Mono.just(orderToExchange), OrderToExchange.class)
-                    .retrieve()
-                    .bodyToMono(Boolean.class)
-                    .block();
+                if(order.get().getExchange().equalsIgnoreCase(Exchange.exchange1.toString())){
+                    boolean response = Boolean.TRUE.equals(webclient.build()
+                            .put()
+                            .uri(exchange1 + "/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/" + order.get().getOrderIdFromExchange())
+                            .body(Mono.just(orderToExchange), OrderToExchange.class)
+                            .retrieve()
+                            .bodyToMono(Boolean.class)
+                            .block());
+                }
 
-            orderDB.get().setQuantity(order.getQuantity());
-            orderDB.get().setPrice(order.getPrice());
-            orderRepository.save(orderDB.get());
+                else if (order.get().getExchange().equalsIgnoreCase(Exchange.exchange2.toString())) {
+                    boolean response = Boolean.TRUE.equals(webclient.build()
+                            .put()
+                            .uri(exchange2 + "/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/" + order.get().getOrderIdFromExchange())
+                            .body(Mono.just(orderToExchange), OrderToExchange.class)
+                            .retrieve()
+                            .bodyToMono(Boolean.class)
+                            .block());
+                }
+
+                else {
+                    //TODO: Logic for updating multi-leg(split) orders
+                }
+
+                order.get().setQuantity(newOrder.getQuantity());
+                order.get().setPrice(newOrder.getPrice());
+                orderRepository.save(order.get());
+            }
+            else throw new InvalidActionException("Completed order cannot be modified!");
+
         }
 
         else{
@@ -195,20 +208,39 @@ public class OrderService {
 
     }
 
-    public void cancelOrder(Long id) throws OrderNotFoundException {
+
+    public void cancelOrder(Long id) throws OrderNotFoundException, InvalidActionException {
         Optional<Order> order = orderRepository.findById(id);
 
         if(order.isPresent()){
-                boolean response = webclient.build()
-                        .delete()
-                        .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/"+order.get().getOrderIdFromExchange())
-                        .retrieve()
-                        .bodyToMono(Boolean.class)
-                        .block();
-            }
-        else throw new OrderNotFoundException("Can't find order with ID " + id);
+            if(!order.get().getStatus().equalsIgnoreCase(Status.COMPLETED.toString())){
 
-        order.get().setDeleted(true);
-        orderRepository.delete(order.get());
+                if(order.get().getExchange().equalsIgnoreCase(Exchange.exchange1.toString())){
+                    boolean response = Boolean.TRUE.equals(webclient.build()
+                            .delete()
+                            .uri(exchange1 + "/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/" + order.get().getOrderIdFromExchange())
+                            .retrieve()
+                            .bodyToMono(Boolean.class)
+                            .block());
+                }
+                else if (order.get().getExchange().equalsIgnoreCase(Exchange.exchange2.toString())) {
+                    boolean response = Boolean.TRUE.equals(webclient.build()
+                            .delete()
+                            .uri(exchange2 + "/15a204cd-9f59-45e9-8908-fbfe7f20480d/order/" + order.get().getOrderIdFromExchange())
+                            .retrieve()
+                            .bodyToMono(Boolean.class)
+                            .block());
+                }
+                else {
+                    //TODO: Logic for deleting multi-leg(split) orders
+                }
+
+
+                orderRepository.delete(order.get());
+            }
+            else throw new InvalidActionException("Completed order cannot be deleted!");
+        }
+
+        else throw new OrderNotFoundException("Can't find order with ID " + id);
     }
 }

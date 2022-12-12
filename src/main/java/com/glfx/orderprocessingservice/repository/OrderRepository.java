@@ -15,9 +15,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         order.setDeleted(true);
     }
 
-    //Find all orders belonging to a particular Client
-    List<Order> findAllByClientID(Long clientID);
-
     //Find all orders belonging to a particular Portfolio
     List<Order> findAllByPortfolioID(Long portfolioID);
 

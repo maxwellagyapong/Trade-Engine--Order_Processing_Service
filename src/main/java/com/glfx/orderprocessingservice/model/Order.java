@@ -17,8 +17,6 @@ public class Order {
     @Column(nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    @NotNull(message = "Client id cannot be null!")
-    private Long clientID;
     @NotNull(message = "Portfolio id cannot be null!")
     private Long portfolioID;
     @NotNull(message = "You must select a product!")
@@ -37,6 +35,9 @@ public class Order {
     private String status;
     @Column(name="is_deleted")
     private boolean isDeleted = false;
+    private String exchange;
+
+
 
     @PrePersist
     protected void prePersist() {

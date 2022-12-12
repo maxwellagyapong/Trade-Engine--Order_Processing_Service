@@ -1,7 +1,7 @@
 package com.glfx.orderprocessingservice.exceptions;
 
-public class InvalidPortfolioException extends Exception{
-    public InvalidPortfolioException(String errorMessage){
+public class InvalidActionException extends Exception{
+    public InvalidActionException(String errorMessage){
         super(errorMessage);
     }
 }
