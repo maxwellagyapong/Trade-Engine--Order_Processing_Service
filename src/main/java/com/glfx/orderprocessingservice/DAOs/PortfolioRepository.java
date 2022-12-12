@@ -26,7 +26,7 @@ public class PortfolioRepository {
     public PortfolioStock getStockFromPortfolioByTickerWhenSelling(Order order){
         PortfolioStock clientStock = getClientPortfolioFromClientService(order).getPortfolioStockList()
                 .stream()
-                .filter(p -> p.getTicker().equalsIgnoreCase(order.getProduct().toString()))
+                .filter(p -> p.getTicker().equalsIgnoreCase(order.getProduct()))
                 .findFirst()
                 .get();
 

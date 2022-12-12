@@ -1,2 +1,5 @@
-package com.glfx.orderprocessingservice.service;public class AutoUpdateOrderStatus {
+package com.glfx.orderprocessingservice.service;
+
+public class AutoUpdateOrderStatus {
+
 }

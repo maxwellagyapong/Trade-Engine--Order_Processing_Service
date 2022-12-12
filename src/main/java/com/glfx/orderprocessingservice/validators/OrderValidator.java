@@ -159,8 +159,6 @@ public class OrderValidator {
                 }
             }
         }
-
-
     }
 
     private boolean isValidOrder(Order order, MarketData md) throws InvalidOrderException {

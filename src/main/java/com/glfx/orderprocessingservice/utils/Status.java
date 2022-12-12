@@ -1,7 +1,7 @@
 package com.glfx.orderprocessingservice.utils;
 
 public enum Status {
-    FULLY_EXECUTED,
+    COMPLETED,
     PARTIALLY_EXECUTED,
     NOT_EXECUTED
 }

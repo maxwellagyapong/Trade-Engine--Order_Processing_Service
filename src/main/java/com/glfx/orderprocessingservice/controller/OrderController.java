@@ -1,5 +1,6 @@
 package com.glfx.orderprocessingservice.controller;
 
+import com.glfx.orderprocessingservice.exceptions.InvalidActionException;
 import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
 import com.glfx.orderprocessingservice.model.Order;
@@ -40,13 +41,13 @@ public class OrderController {
 
     @PutMapping("/{orderId}")
     @ResponseStatus(HttpStatus.OK)
-    public void updateOrder(@Validated @RequestBody Order order, @PathVariable("orderId") Long id) throws OrderNotFoundException{
+    public void updateOrder(@Validated @RequestBody Order order, @PathVariable("orderId") Long id) throws OrderNotFoundException, InvalidActionException {
         orderService.updateOrder(id, order);
     }
 
     @DeleteMapping("/{orderId}")
     @ResponseStatus(HttpStatus.OK)
-    public void cancelOrder(@PathVariable("orderId") Long id) throws OrderNotFoundException {
+    public void cancelOrder(@PathVariable("orderId") Long id) throws OrderNotFoundException, InvalidActionException {
         orderService.cancelOrder(id);
     }
 
