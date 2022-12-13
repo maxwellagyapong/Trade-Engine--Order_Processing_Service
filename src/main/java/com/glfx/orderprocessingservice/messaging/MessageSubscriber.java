@@ -18,7 +18,6 @@ public class MessageSubscriber  {
     @Value("${topic.name:marketData}")
     private String marketDataTopic;
 
-
     @PostConstruct
     private void init(){
         this.redisTemplate

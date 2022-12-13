@@ -14,7 +14,7 @@ public class PortfolioRepository {
 
         Portfolio clientPortfolio = webclient.build()
                 .get()
-                .uri("https://2a4c-102-22-11-130.ngrok.io/v1/portfolios/" + order.getPortfolioID())
+                .uri("https://d9bb-102-22-11-130.eu.ngrok.io/v1/portfolios/" + order.getPortfolioID())
                 .retrieve()
                 .bodyToMono(Portfolio.class)
                 .block();

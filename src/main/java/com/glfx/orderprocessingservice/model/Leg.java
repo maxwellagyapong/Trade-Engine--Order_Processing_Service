@@ -1,7 +1,6 @@
 package com.glfx.orderprocessingservice.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.springframework.stereotype.Component;
 
@@ -18,11 +17,21 @@ public class Leg {
     private Long id;
     private String orderIdFromExchange;
     private String exchange;
-    private Double price;
+    private String product;
+    private int quantity;
     private String side;
-    @NotNull(message = "Order must have a type. Either LIMIT or MARKET!")
-    private String type;
-    @ManyToOne
-    @JoinColumn(name = "order_id")
-    private Order mainOrder;
+    private String status;
+    private Long mainOrderId;
+    @Column(name="is_deleted")
+    private boolean isDeleted = false;
+
+    public Leg(String orderIdFromExchange, String exchange, String product, int quantity, String side, String status, Long mainOrderId) {
+        this.orderIdFromExchange = orderIdFromExchange;
+        this.exchange = exchange;
+        this.product = product;
+        this.quantity = quantity;
+        this.side = side;
+        this.status = status;
+        this.mainOrderId = mainOrderId;
+    }
 }

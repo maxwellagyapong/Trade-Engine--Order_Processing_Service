@@ -6,6 +6,7 @@ import com.glfx.orderprocessingservice.DTO.OrderBookWithExchange;
 import com.glfx.orderprocessingservice.DTO.OrderToExchange;
 import com.glfx.orderprocessingservice.model.Leg;
 import com.glfx.orderprocessingservice.model.Order;
+import com.glfx.orderprocessingservice.repository.LegRepository;
 import com.glfx.orderprocessingservice.repository.OrderRepository;
 import com.glfx.orderprocessingservice.utils.Exchange;
 import com.glfx.orderprocessingservice.utils.Status;
@@ -46,6 +47,9 @@ public class SplitOrderService {
 
     @Autowired
     private Leg leg;
+
+    @Autowired
+    private LegRepository legRepository;
 
 
 
@@ -122,7 +126,7 @@ public class SplitOrderService {
         for(OrderBook b: book){
             updateDatedWithExchanges.add(new OrderBookWithExchange(b.getProduct(), b.getPrice(), b.getQuantity(),
                     b.getSide(), b.getOrderID(), b.getOrderType(), b.getCumulatitiveQuantity(),
-            b.getCumulatitivePrice(), b.getExecutions(), exchange));
+                    b.getCumulatitivePrice(), b.getExecutions(), exchange));
         }
 
         return updateDatedWithExchanges;
@@ -130,6 +134,8 @@ public class SplitOrderService {
 
 
     private void executeOrders(List<OrderBookWithExchange> d1, List<OrderBookWithExchange> d2, Order order) {
+        order.setStatus(Status.NOT_EXECUTED.toString());
+        orderRepository.save(order);//First save order to DB
 
         if (order.getSide().equalsIgnoreCase("BUY")) {
 
@@ -145,7 +151,7 @@ public class SplitOrderService {
                 if(ListOfWhatToBuy.isEmpty()){
 
                     //Just place order to any of the exchanges, with quantity left to buy
-                    orderToExchange = new OrderToExchange(order.getProduct(), order.getQuantity() - amountBought, order.getPrice(),
+                    orderToExchange = new OrderToExchange(order.getProduct(), order.getQuantity(), order.getPrice(),
                             order.getSide(), order.getType());
 
                     //Take to exchange 1
@@ -155,17 +161,14 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+
+                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
+                    break;
                 }
 
                 else {
-                    order.setOrderIdFromExchange("multiLeg");
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.both.toString());
-                    orderRepository.save(order);
                     OrderBookWithExchange whatToBuy = ListOfWhatToBuy.stream()
                             .findFirst()
                             .get();
@@ -176,7 +179,7 @@ public class SplitOrderService {
                                 order.getSide(), order.getType());
 
                         //Take order to the right exchange
-                        if(whatToBuy.getExchange().equalsIgnoreCase("exchange1")){
+                        if(whatToBuy.getExchange().equalsIgnoreCase(Exchange.exchange1.toString())){
 
                             //Take to exchange 1
                             String response = webclient.build().post()
@@ -186,11 +189,9 @@ public class SplitOrderService {
                                     .bodyToMono(String.class)
                                     .block();
 
-
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1)); //TODO: All these must be leg instead
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange1.toString());
-                            orderRepository.save(order);
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
                         else{
 
@@ -201,10 +202,10 @@ public class SplitOrderService {
                                     .retrieve()
                                     .bodyToMono(String.class)
                                     .block();
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1)); //TODO: All these must be leg instead
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange2.toString());
-                            orderRepository.save(order);
+
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
 
 
@@ -218,7 +219,7 @@ public class SplitOrderService {
                                 order.getSide(), order.getType());
 
                         //Take order to the right exchange
-                        if(whatToBuy.getExchange().equalsIgnoreCase("exchange1")){
+                        if(whatToBuy.getExchange().equalsIgnoreCase(Exchange.exchange1.toString())){
 
                             //Take to exchange 1
                             String response = webclient.build().post()
@@ -227,10 +228,10 @@ public class SplitOrderService {
                                     .retrieve()
                                     .bodyToMono(String.class)
                                     .block();
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange1.toString());
-                            orderRepository.save(order);
+
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
                         else{
 
@@ -241,10 +242,10 @@ public class SplitOrderService {
                                     .retrieve()
                                     .bodyToMono(String.class)
                                     .block();
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange2.toString());
-                            orderRepository.save(order);
+
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
                         break;
                     }
@@ -277,16 +278,13 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+
+                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
                 else {
-                    order.setOrderIdFromExchange("multiLeg");
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.both.toString());
-                    orderRepository.save(order);
+
                     OrderBookWithExchange whatToSellTo = ListOfWhatToSellTo.stream()
                             .findFirst()
                             .get();
@@ -307,11 +305,9 @@ public class SplitOrderService {
                                     .bodyToMono(String.class)
                                     .block();
 
-
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1)); //TODO: All these must be leg instead
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange1.toString());
-                            orderRepository.save(order);
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
                         else{
 
@@ -322,10 +318,10 @@ public class SplitOrderService {
                                     .retrieve()
                                     .bodyToMono(String.class)
                                     .block();
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1)); //TODO: All these must be leg instead
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange2.toString());
-                            orderRepository.save(order);
+
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
 
                         amountSold += whatToSellTo.getQuantity();
@@ -348,10 +344,10 @@ public class SplitOrderService {
                                     .retrieve()
                                     .bodyToMono(String.class)
                                     .block();
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange1.toString());
-                            orderRepository.save(order);
+
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
                         else{
 
@@ -362,10 +358,10 @@ public class SplitOrderService {
                                     .retrieve()
                                     .bodyToMono(String.class)
                                     .block();
-                            order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                            order.setStatus(Status.NOT_EXECUTED.toString());
-                            order.setExchange(Exchange.exchange2.toString());
-                            orderRepository.save(order);
+
+                            leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                                    orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                            legRepository.save(leg);
                         }
                         break;
                     }
@@ -394,6 +390,8 @@ public class SplitOrderService {
 
 
     private void compareDataAndExecuteOrders(List<OrderBook> d1, List<OrderBook> d2, Order order){
+        order.setStatus(Status.NOT_EXECUTED.toString());
+        orderRepository.save(order); //First save order in DB
 
         if (order.getSide().equalsIgnoreCase("BUY")){
 
@@ -422,15 +420,13 @@ public class SplitOrderService {
                             .bodyToMono(String.class)
                             .block();
 
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            order.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
 
                 }
 
-                else{
-                    //TODO: Must save order first before splitting
+                else{//If we can't get all the quantity on exchange 1
                     //Split
                     //Take this to exchange 1
                     orderToExchange = new OrderToExchange(order.getProduct()
@@ -446,10 +442,11 @@ public class SplitOrderService {
                             .bodyToMono(String.class)
                             .block();
 
-                    order.setOrderIdFromExchange(response1.substring(1,response1.length()-1)); //TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+                    //Save First leg
+                    leg = new Leg(response1.substring(1,response1.length()-1), Exchange.exchange1.toString(), order.getProduct(), available,
+                            order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
+
 
                     //Take this to exchange 2
                     orderToExchange = new OrderToExchange(order.getProduct()
@@ -464,15 +461,16 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response2.substring(1,response2.length()-1)); //TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
+
+                    //Save Second leg
+                    leg = new Leg(response2.substring(1,response2.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                            order.getQuantity() - available, order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
 
             }
 
-            else{
+            else{//if avgSellPrice2<avgSellPrice1
                 //Get the available quantity from exchange2
                 int available = getAvailableQuantity(d2, order.getSide());
 
@@ -492,13 +490,13 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
+
+                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                            order.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
-                else{
-                    //TODO: Must save order first before splitting
+                else{//If we can't get all the quantity on exchange 2
+                    //Split
                     //Take this to exchange 2
                     orderToExchange = new OrderToExchange(order.getProduct()
                             , available
@@ -513,14 +511,14 @@ public class SplitOrderService {
                             .bodyToMono(String.class)
                             .block();
 
-                    order.setOrderIdFromExchange(response1.substring(1,response1.length()-1)); //TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
+                    //Save first leg
+                    leg = new Leg(response1.substring(1,response1.length()-1), Exchange.exchange2.toString(), order.getProduct(), available,
+                            order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
 
                     //Take this to exchange 1
                     orderToExchange = new OrderToExchange(order.getProduct()
-                            , order.getQuantity()
+                            , order.getQuantity() - available
                             , order.getPrice()
                             , order.getSide()
                             , order.getType());
@@ -532,16 +530,16 @@ public class SplitOrderService {
                             .bodyToMono(String.class)
                             .block();
 
-                    order.setOrderIdFromExchange(response2.substring(1,response2.length()-1)); //TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+                    //Save second leg
+                    leg = new Leg(response2.substring(1,response2.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            order.getQuantity() - available, order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
             }
 
 
         }
-        else{
+        else{//If it is a SELL order
             //Get the average buying price from both exchanges
             double avg_bid1 = getAverageBuyingPrice(d1);
             double avg_bid2 = getAverageBuyingPrice(d2);
@@ -565,13 +563,14 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+
+                    //Save leg
+                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            order.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
-                else{
-                    //TODO: Must save order first before splitting
+
+                else{//If we can't get all the quantity on exchange 1
                     //Split
                     //Take this to exchange 1
                     orderToExchange = new OrderToExchange(order.getProduct()
@@ -586,10 +585,11 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response1.substring(1,response1.length()-1)); //TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+
+                    //Save first leg
+                    leg = new Leg(response1.substring(1,response1.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            available, order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
 
                     //Take this to exchange 2
                     orderToExchange = new OrderToExchange(order.getProduct()
@@ -604,13 +604,14 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response2.substring(1,response2.length()-1)); //TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
+
+                    //Save second leg
+                    leg = new Leg(response2.substring(1,response2.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                            order.getQuantity() - available, order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
 
-            }else{
+            }else{//If avg_bid2 < avg_bid1
                 //Get available quantity from exchange2
                 int available = getAvailableQuantity(d2, order.getSide());
 
@@ -630,13 +631,14 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
 
-                }else{
-                    //TODO: Must save order first before splitting
+                    //Save leg
+                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                            order.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
+
+                }
+                else{//If we can't get all the quantity on exchange 2
                     //Split
                     //Take this to exchange 2
                     orderToExchange = new OrderToExchange(order.getProduct()
@@ -651,10 +653,11 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response1.substring(1,response1.length()-1));//TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange2.toString());
-                    orderRepository.save(order);
+
+                    //Save leg 1
+                    leg = new Leg(response1.substring(1,response1.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+                            available, order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
 
                     //Take this to exchange1
                     orderToExchange = new OrderToExchange(order.getProduct()
@@ -669,10 +672,11 @@ public class SplitOrderService {
                             .retrieve()
                             .bodyToMono(String.class)
                             .block();
-                    order.setOrderIdFromExchange(response2.substring(1,response2.length()-1));//TODO: Must be leg instead
-                    order.setStatus(Status.NOT_EXECUTED.toString());
-                    order.setExchange(Exchange.exchange1.toString());
-                    orderRepository.save(order);
+
+                    //Save leg 2
+                    leg = new Leg(response2.substring(1,response2.length()-1), Exchange.exchange1.toString(), order.getProduct(),
+                            order.getQuantity() - available, order.getSide(), order.getStatus(), order.getId());
+                    legRepository.save(leg);
                 }
             }
 
