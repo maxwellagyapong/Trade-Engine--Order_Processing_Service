@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -31,11 +32,13 @@ public class Order {
     private Date dateCreated;
     @Column(name = "date_modified")
     private Date dateModified;
-    private String orderIdFromExchange;
+//    private String orderIdFromExchange;
     private String status;
     @Column(name="is_deleted")
     private boolean isDeleted = false;
-    private String exchange;
+//    private String exchange;
+    @OneToMany(mappedBy = "mainOrderId")
+    private List<Leg> legs;
 
 
 

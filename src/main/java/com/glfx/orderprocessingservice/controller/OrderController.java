@@ -3,7 +3,9 @@ package com.glfx.orderprocessingservice.controller;
 import com.glfx.orderprocessingservice.exceptions.InvalidActionException;
 import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
+import com.glfx.orderprocessingservice.model.Leg;
 import com.glfx.orderprocessingservice.model.Order;
+import com.glfx.orderprocessingservice.service.LegService;
 import com.glfx.orderprocessingservice.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +14,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/orders")
@@ -21,17 +22,39 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
+    @Autowired
+    private LegService legService;
+
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public List<Order> getAllOrders(){
         return orderService.getAllOrders();
     }
 
-    @GetMapping("/{orderId}")
+    @GetMapping("/{orderId}/status")
     @ResponseStatus(HttpStatus.OK)
-    public Optional<Order> getOrder(@PathVariable("orderId") Long id) throws OrderNotFoundException {
+    public String getOrderStatus(@PathVariable("orderId") Long id) throws OrderNotFoundException {
         return orderService.checkOrderStatus(id);
     }
+
+    @GetMapping("/{orderId}")
+    public Order getOrder(@PathVariable("orderId") Long id) throws OrderNotFoundException{
+        return orderService.getOrder(id);
+    }
+
+    @GetMapping("/legs")
+    @ResponseStatus(HttpStatus.OK)
+    public List<Leg> getAllLegs(){
+        return legService.getAllLegs();
+    }
+
+    @GetMapping("/{orderId}/legs")
+    @ResponseStatus(HttpStatus.OK)
+    public List<Leg> getAllLegsOfAnOrder(@PathVariable Long orderId){
+        return legService.findLegsByOrderId(orderId);
+    }
+
+
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -39,18 +62,28 @@ public class OrderController {
         orderService.createOrder(order);
     }
 
-    @PutMapping("/{orderId}")
+//    @PutMapping("/{orderId}")
+//    @ResponseStatus(HttpStatus.OK)
+//    public void updateOrder(@Validated @RequestBody Order order, @PathVariable("orderId") Long id) throws OrderNotFoundException, InvalidActionException {
+//        orderService.updateOrder(id, order);
+//    }
+
+//    @DeleteMapping("/{orderId}")
+//    @ResponseStatus(HttpStatus.OK)
+//    public void cancelOrder(@PathVariable("orderId") Long id) throws OrderNotFoundException, InvalidActionException {
+//        orderService.cancelOrder(id);
+//    }
+
+    @DeleteMapping("/{orderId}/{legId}")
     @ResponseStatus(HttpStatus.OK)
-    public void updateOrder(@Validated @RequestBody Order order, @PathVariable("orderId") Long id) throws OrderNotFoundException, InvalidActionException {
-        orderService.updateOrder(id, order);
+    public void cancelLeg(@PathVariable Long orderId, @PathVariable Long legId) throws OrderNotFoundException, InvalidActionException {
+        legService.cancelLeg(legId);
     }
 
-    @DeleteMapping("/{orderId}")
+    @PutMapping("/{orderId}/{legId}")
     @ResponseStatus(HttpStatus.OK)
-    public void cancelOrder(@PathVariable("orderId") Long id) throws OrderNotFoundException, InvalidActionException {
-        orderService.cancelOrder(id);
+    public void updateOrder(@RequestBody Order order, @PathVariable Long orderId, @PathVariable Long legId) throws OrderNotFoundException, InvalidActionException {
+        legService.modifyLeg(legId, order);
     }
-
-
 }
 

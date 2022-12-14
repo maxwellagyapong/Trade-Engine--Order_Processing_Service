@@ -88,18 +88,19 @@ public class OrderValidator {
         boolean isReasonable;
 
         if(order.getSide().equals(Side.BUY.toString())){
-                isReasonable = !(Math.abs(md.getLAST_TRADED_PRICE() - order.getPrice()) > md.getMAX_PRICE_SHIFT());
+            isReasonable = !(Math.abs(md.getLAST_TRADED_PRICE() - order.getPrice()) > md.getMAX_PRICE_SHIFT());
         }else{
             isReasonable = !(Math.abs(order.getPrice() - md.getLAST_TRADED_PRICE() ) > md.getMAX_PRICE_SHIFT());
         }
-
-        if(isReasonable)
-            return isReasonable;
-        else
-            if(order.getPrice() - md.getLAST_TRADED_PRICE() > 0){
-                throw new InvalidOrderException("Order price is too high!");
-            }
-            else throw new InvalidOrderException("Order price is too low!");
+//
+//        if(isReasonable)
+//            return isReasonable;
+//        else
+//        if(order.getPrice() - md.getLAST_TRADED_PRICE() > 0){
+//            throw new InvalidOrderException("Order price is too high!");
+//        }
+//        else throw new InvalidOrderException("Order price is too low!");
+        return isReasonable;
 
     }
 
