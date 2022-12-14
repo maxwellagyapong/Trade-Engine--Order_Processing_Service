@@ -5,6 +5,7 @@ import com.glfx.orderprocessingservice.exceptions.InvalidOrderException;
 import com.glfx.orderprocessingservice.exceptions.OrderNotFoundException;
 import com.glfx.orderprocessingservice.model.Leg;
 import com.glfx.orderprocessingservice.model.Order;
+import com.glfx.orderprocessingservice.service.ArbFinder;
 import com.glfx.orderprocessingservice.service.LegService;
 import com.glfx.orderprocessingservice.service.OrderService;
 import jakarta.validation.Valid;
@@ -24,6 +25,9 @@ public class OrderController {
 
     @Autowired
     private LegService legService;
+
+    @Autowired
+    private ArbFinder arbFinder;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -84,6 +88,12 @@ public class OrderController {
     @ResponseStatus(HttpStatus.OK)
     public void updateOrder(@RequestBody Order order, @PathVariable Long orderId, @PathVariable Long legId) throws OrderNotFoundException, InvalidActionException {
         legService.modifyLeg(legId, order);
+    }
+    //Trying to automate Trading
+    @PostMapping("/automate")
+    @ResponseStatus(HttpStatus.OK)
+    public void automateTrade(){
+        arbFinder.getArb();
     }
 }
 

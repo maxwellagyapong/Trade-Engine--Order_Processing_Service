@@ -24,4 +24,6 @@ public class OrderToExchange {
         this.side = side;
         this.type = type;
     }
+
+
 }
