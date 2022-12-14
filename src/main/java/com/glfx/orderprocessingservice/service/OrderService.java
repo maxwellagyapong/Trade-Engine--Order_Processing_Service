@@ -105,7 +105,7 @@ public class OrderService {
                     System.out.println("Splitting order will be done here!");
 //                    splitOrderService.splitOrderForLimitOrder(order);
                     String response = webclient.build().post()
-                            .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order")
+                            .uri(exchange1+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order")
                             .body(Mono.just(orderToExchange), OrderToExchange.class)
                             .retrieve()
                             .bodyToMono(String.class)
@@ -171,25 +171,25 @@ public class OrderService {
                 else {
 
                     System.out.println("Splitting order will be done here!");
-                    //splitOrderService.splitOrderForMarketOrder(order);
+                    splitOrderService.splitOrderForMarketOrder(order);
 
-                    String response = webclient.build().post()
-                            .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order")
-                            .body(Mono.just(orderToExchange), OrderToExchange.class)
-                            .retrieve()
-                            .bodyToMono(String.class)
-                            .block();
-                    order.setStatus(Status.NOT_EXECUTED.toString());
+//                    String response = webclient.build().post()
+//                            .uri(exchange2+"/15a204cd-9f59-45e9-8908-fbfe7f20480d/order")
+//                            .body(Mono.just(orderToExchange), OrderToExchange.class)
+//                            .retrieve()
+//                            .bodyToMono(String.class)
+//                            .block();
+//                    order.setStatus(Status.NOT_EXECUTED.toString());
 //                    order.setExchange(Exchange.exchange2.toString());
 //                    order.setOrderIdFromExchange(response.substring(1,response.length()-1));
-                    Order newOrder = orderRepository.save(order);
+//                    Order newOrder = orderRepository.save(order);
+//
+//                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange2.toString(), order.getProduct(),
+//                            orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
+//                    legRepository.save(leg);
 
-                    leg = new Leg(response.substring(1,response.length()-1), Exchange.exchange2.toString(), order.getProduct(),
-                            orderToExchange.getQuantity(), order.getSide(), order.getStatus(), order.getId());
-                    legRepository.save(leg);
 
-
-                    logMessage.makeLogMessage("New Order was made with the details: " + newOrder.toString());
+                    logMessage.makeLogMessage("New Order was made with the details: " + order.toString());
 
                 }
             }
